@@ -101,9 +101,12 @@ async function saveQuestions(questions) {
     .upsert(questions)
     .select();
 
+  console.log("QUESTION DATA:", data);
+  console.log("QUESTION ERROR:", error);
+
   if (error) {
     console.error(error);
-    alert("Failed to save questions");
+    alert(JSON.stringify(error, null, 2));
     return;
   }
 
