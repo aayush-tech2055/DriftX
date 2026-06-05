@@ -82,17 +82,46 @@ async function saveParticipantToDB(participant) {
   }
 }
 
-function getQuestions() {
-  const saved = localStorage.getItem(QUESTION_KEY);
-  if (!saved) {
-    localStorage.setItem(QUESTION_KEY, JSON.stringify(dummyQuestions));
-    return dummyQuestions;
+async function getQuestions() {
+  const { data, error } = await supabaseClient
+    .from("questions")
+    .select("*");
+
+  if (error) {
+    console.error(error);
+    return [];
   }
-  return JSON.parse(saved);
+
+  return data || [];
 }
 
-function saveQuestions(questions) {
-  localStorage.setItem(QUESTION_KEY, JSON.stringify(questions));
+async function saveQuestions(questions) {
+  const { data, error } = await supabaseClient
+    .from("questions")
+    .upsert(questions)
+    .select();
+
+  if (error) {
+    console.error(error);
+    alert("Failed to save questions");
+    return;
+  }
+
+  const ids = questions.map((q) => q.id);
+  if (ids.length) {
+    const { error: delError } = await supabaseClient
+      .from("questions")
+      .delete()
+      .not("id", "in", `(${ids.map((id) => `'${id}'`).join(',')})`);
+    if (delError) console.error(delError);
+  } else {
+    // no ids -> delete all
+    const { error: delError } = await supabaseClient
+      .from("questions")
+      .delete()
+      .neq("id", "");
+    if (delError) console.error(delError);
+  }
 }
 
 async function getParticipants() {
@@ -136,12 +165,12 @@ function escapeHtml(value) {
 }
 
 async function renderStats() {
-  $("#questionCount").textContent = getQuestions().length;
+  $("#questionCount").textContent = (await getQuestions()).length;
   $("#participantCount").textContent = (await getParticipants()).length;
 }
 
-function renderQuizQuestions() {
-  const questions = getQuestions();
+async function renderQuizQuestions() {
+  const questions = await getQuestions();
   const questionList = $("#questionList");
 
   if (!questions.length) {
@@ -241,9 +270,9 @@ async function renderAdminParticipants() {
     .join("");
 }
 
-function renderAdminQuestions() {
+async function renderAdminQuestions() {
   const list = $("#adminQuestionList");
-  const questions = getQuestions();
+  const questions = await getQuestions();
 
   if (!questions.length) {
     list.innerHTML = `<p class="empty-row">No questions added yet.</p>`;
@@ -276,7 +305,7 @@ async function setAdminState(isLoggedIn) {
   $("#adminLogin").classList.toggle("is-hidden", isLoggedIn);
   $("#adminDashboard").classList.toggle("is-hidden", !isLoggedIn);
   if (isLoggedIn) {
-    renderAdminQuestions();
+    await renderAdminQuestions();
     await renderAdminParticipants();
   }
 }
@@ -311,9 +340,9 @@ async function exportParticipantsCsv() {
   URL.revokeObjectURL(url);
 }
 
-$("#startForm").addEventListener("submit", (event) => {
+$("#startForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const questions = getQuestions();
+  const questions = await getQuestions();
   if (!questions.length) {
     alert("No questions are active. Please ask admin to add questions.");
     return;
@@ -324,7 +353,7 @@ $("#startForm").addEventListener("submit", (event) => {
     phone: $("#contestantPhone").value.trim(),
   };
 
-  renderQuizQuestions();
+  await renderQuizQuestions();
   $("#quizContestant").textContent = activeContestant.name;
   $("#quizProgress").textContent = `${questions.length} questions loaded`;
   $("#startForm").classList.add("is-hidden");
@@ -333,7 +362,7 @@ $("#startForm").addEventListener("submit", (event) => {
 
 $("#quizForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const questions = getQuestions();
+  const questions = await getQuestions();
   const formData = new FormData(event.currentTarget);
   let correct = 0;
 
@@ -385,18 +414,18 @@ $("#clearAdminScores").addEventListener("click", async () => {
   await renderLeaderboard();
 });
 
-$("#adminLogin").addEventListener("submit", (event) => {
+$("#adminLogin").addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = $("#adminUser").value.trim();
   const password = $("#adminPass").value;
   const isValid = username === ADMIN_USERNAME && password === ADMIN_PASSWORD;
 
   $("#loginError").textContent = isValid ? "" : "Invalid admin login details.";
-  if (isValid) setAdminState(true);
+  if (isValid) await setAdminState(true);
 });
 
-$("#adminLogout").addEventListener("click", () => {
-  setAdminState(false);
+$("#adminLogout").addEventListener("click", async () => {
+  await setAdminState(false);
 });
 
 $("#adminQuestionType").addEventListener("change", (event) => {
@@ -430,7 +459,7 @@ $("#questionForm").addEventListener("submit", async (event) => {
     answer,
   };
 
-  const questions = getQuestions();
+  const questions = await getQuestions();
   const existingIndex = questions.findIndex((item) => item.id === id);
   if (existingIndex >= 0) {
     questions[existingIndex] = question;
@@ -438,9 +467,9 @@ $("#questionForm").addEventListener("submit", async (event) => {
     questions.push(question);
   }
 
-  saveQuestions(questions);
+  await saveQuestions(questions);
   resetQuestionForm();
-  renderAdminQuestions();
+  await renderAdminQuestions();
   await renderStats();
 });
 
@@ -449,7 +478,7 @@ $("#resetQuestionForm").addEventListener("click", resetQuestionForm);
 $("#adminQuestionList").addEventListener("click", async (event) => {
   const editId = event.target.dataset.edit;
   const deleteId = event.target.dataset.delete;
-  const questions = getQuestions();
+  const questions = await getQuestions();
 
   if (editId) {
     const question = questions.find((item) => item.id === editId);
@@ -465,22 +494,24 @@ $("#adminQuestionList").addEventListener("click", async (event) => {
 
   if (deleteId) {
     if (!confirm("Delete this question?")) return;
-    saveQuestions(questions.filter((item) => item.id !== deleteId));
-    renderAdminQuestions();
+    await saveQuestions(questions.filter((item) => item.id !== deleteId));
+    await renderAdminQuestions();
     await renderStats();
   }
 });
 
 $("#restoreDummyQuestions").addEventListener("click", async () => {
-  saveQuestions(dummyQuestions.map((question) => ({ ...question, id: crypto.randomUUID() })));
+  await saveQuestions(dummyQuestions.map((question) => ({ ...question, id: crypto.randomUUID() })));
   resetQuestionForm();
-  renderAdminQuestions();
+  await renderAdminQuestions();
   await renderStats();
 });
 
 $("#exportParticipants").addEventListener("click", exportParticipantsCsv);
 
-getQuestions();
+(async () => {
+  // initial fetch happens via renderStats/renderLeaderboard
+})();
 (async () => {
   await renderStats();
   await renderLeaderboard();
@@ -495,3 +526,20 @@ async function testConnection() {
 }
 
 testConnection();
+
+// Realtime subscription for questions table to live-sync UI
+supabaseClient
+  .channel("questions")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "questions",
+    },
+    async () => {
+      await renderQuizQuestions();
+      await renderLeaderboard();
+    }
+  )
+  .subscribe();
