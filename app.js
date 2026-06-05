@@ -369,7 +369,9 @@ $("#quizForm").addEventListener("submit", async (event) => {
 
   try {
     const questions = await getQuestions();
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(
+  document.getElementById("quizForm")
+);
     let correct = 0;
 
     for (const question of questions) {
