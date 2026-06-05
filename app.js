@@ -1,7 +1,7 @@
-const SUPABASE_URL = "https://iqrpmqqksfjcnxarpwmp.supabase.co/rest/v1/";
+const SUPABASE_URL = "https://iqrpmqqksfjcnxarpwmp.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxcnBtcXFrc2ZqY254YXJwd21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MzIzNDQsImV4cCI6MjA5NjIwODM0NH0.-nUJUH1FUDjy3s42LDOF85gVvLThdIQ7hjfNMnaCWlg";
 
-const supabase = window.supabase.createClient(
+const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
@@ -436,10 +436,9 @@ renderStats();
 renderLeaderboard();
 setAdminState(localStorage.getItem(ADMIN_SESSION_KEY) === "true");
 async function testConnection() {
-  const { data, error } = await supabase
-    .from("participants")
-    .select("*");
-
+  const { data, error } = await supabaseClient
+  .from("participants")
+  .select("*");
   console.log("DATA:", data);
   console.log("ERROR:", error);
 }
