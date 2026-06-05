@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DriftX Cafe | F1 Simulator Quiz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <a class="brand" href="#home" aria-label="DriftX Cafe home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M6 31L17 9h12L18 31H6Z"></path>
+              <path d="M23 31L34 9h8L31 31H23Z"></path>
+              <path d="M9 37h30v4H9z"></path>
+            </svg>
+          </span>
+          <span>
+            <strong>DriftX Cafe</strong>
+            <small>Racing Sim Lounge</small>
+          </span>
+        </a>
+        <nav class="top-nav" aria-label="Primary navigation">
+          <a href="#quiz">Quiz</a>
+          <a href="#leaderboard">Leaderboard</a>
+          <a href="#admin">Admin</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero" id="home">
+          <div class="hero-media" aria-hidden="true"></div>
+          <div class="hero-overlay"></div>
+          <div class="hero-content">
+            <p class="eyebrow">Cafe. Cockpit. Competition.</p>
+            <h1>DriftX Cafe</h1>
+            <p class="hero-copy">
+              Step into the racing simulator, answer F1 physics challenges, and climb the live event leaderboard.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#quiz">Start Quiz</a>
+              <a class="button ghost" href="#leaderboard">View Scores</a>
+            </div>
+          </div>
+          <div class="event-strip" aria-label="Event details">
+            <span>F1 physics quiz</span>
+            <span>MCQ + typed answers</span>
+            <span>Leaderboard scoring</span>
+          </div>
+        </section>
+
+        <section class="section venue-section" aria-label="Experience highlights">
+          <div class="section-heading">
+            <p class="eyebrow">Race day format</p>
+            <h2>Come in, compete, get ranked.</h2>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">01</span>
+              <h3>Register</h3>
+              <p>Contestants enter their name and phone number before the quiz begins.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">02</span>
+              <h3>Answer</h3>
+              <p>Questions can be multiple choice or typed answers, set by the admin.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-icon" aria-hidden="true">03</span>
+              <h3>Score</h3>
+              <p>Every finisher is saved with score details and shown on the leaderboard.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section quiz-section" id="quiz">
+          <div class="quiz-layout">
+            <div class="quiz-intro">
+              <p class="eyebrow">Contestant grid</p>
+              <h2>F1 Physics Challenge</h2>
+              <p>
+                Enter participant details, answer the active question set, and submit for instant scoring.
+              </p>
+              <div class="stat-row">
+                <div>
+                  <strong id="questionCount">0</strong>
+                  <span>questions</span>
+                </div>
+                <div>
+                  <strong id="participantCount">0</strong>
+                  <span>finishers</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="quiz-panel" id="quizPanel">
+              <form id="startForm" class="form-stack">
+                <div class="panel-title">
+                  <h3>Start your run</h3>
+                  <p>Participant details are required for the leaderboard.</p>
+                </div>
+                <label>
+                  Full name
+                  <input id="contestantName" type="text" autocomplete="name" placeholder="e.g. Arjun Mehta" required />
+                </label>
+                <label>
+                  Phone number
+                  <input id="contestantPhone" type="tel" autocomplete="tel" placeholder="e.g. 9876543210" required />
+                </label>
+                <button class="button primary full" type="submit">Begin Quiz</button>
+              </form>
+
+              <form id="quizForm" class="form-stack is-hidden">
+                <div class="panel-title">
+                  <h3 id="quizContestant">Quiz run</h3>
+                  <p id="quizProgress">Question set loaded</p>
+                </div>
+                <div id="questionList" class="question-list"></div>
+                <div class="quiz-actions">
+                  <button class="button ghost" id="cancelQuiz" type="button">Cancel</button>
+                  <button class="button primary" type="submit">Submit Score</button>
+                </div>
+              </form>
+
+              <div id="resultPanel" class="result-panel is-hidden">
+                <p class="eyebrow">Run complete</p>
+                <h3 id="resultTitle">Score saved</h3>
+                <p id="resultCopy"></p>
+                <div class="result-score" id="resultScore"></div>
+                <button class="button primary full" id="newRun" type="button">New Participant</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section leaderboard-section" id="leaderboard">
+          <div class="section-heading inline-heading">
+            <div>
+              <p class="eyebrow">Event standings</p>
+              <h2>Leaderboard</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Score</th>
+                  <th>Completed</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section admin-section" id="admin">
+          <div class="admin-shell">
+            <div class="admin-aside">
+              <p class="eyebrow">Race control</p>
+              <h2>Admin Panel</h2>
+            
+            </div>
+
+            <div class="admin-panel">
+              <form id="adminLogin" class="form-stack">
+                <div class="panel-title">
+                  <h3>Admin login</h3>
+                  <p>Sign in to set questions and view participant data.</p>
+                </div>
+                <label>
+                  Username
+                  <input id="adminUser" type="text" autocomplete="username" required />
+                </label>
+                <label>
+                  Password
+                  <input id="adminPass" type="password" autocomplete="current-password" required />
+                </label>
+                <button class="button primary full" type="submit">Enter Admin</button>
+                <p class="error-text" id="loginError" role="alert"></p>
+              </form>
+
+              <div id="adminDashboard" class="admin-dashboard is-hidden">
+                <div class="admin-topbar">
+                  <div>
+                    <p class="eyebrow">Question garage</p>
+                    <h3>Manage event questions</h3>
+                  </div>
+                  <button class="button small ghost" id="adminLogout" type="button">Logout</button>
+                </div>
+
+                <form id="questionForm" class="question-editor">
+                  <input type="hidden" id="editingQuestionId" />
+                  <label class="wide">
+                    Question
+                    <textarea id="adminQuestion" rows="3" placeholder="Write the F1 physics question" required></textarea>
+                  </label>
+                  <label>
+                    Question type
+                    <select id="adminQuestionType">
+                      <option value="mcq">MCQ</option>
+                      <option value="typed">Typed answer</option>
+                    </select>
+                  </label>
+                  <label id="optionsField" class="wide">
+                    MCQ options, one per line
+                    <textarea id="adminOptions" rows="4" placeholder="Option 1&#10;Option 2&#10;Option 3"></textarea>
+                  </label>
+                  <label>
+                    Correct answer
+                    <input id="adminAnswer" type="text" placeholder="Must match option or typed answer" required />
+                  </label>
+                  <div class="editor-actions">
+                    <button class="button ghost" id="resetQuestionForm" type="button">Reset</button>
+                    <button class="button primary" type="submit">Save Question</button>
+                  </div>
+                </form>
+
+                <div class="admin-block">
+                  <div class="block-heading">
+                    <h4>Question list</h4>
+                    <button class="button small ghost" id="restoreDummyQuestions" type="button">Restore Dummy</button>
+                  </div>
+                  <div id="adminQuestionList" class="admin-list"></div>
+                </div>
+
+                <div class="admin-block">
+                  <div class="block-heading">
+                    <h4>Participant data</h4>
+                    <div class="item-actions">
+                      <button class="button small ghost danger" id="clearAdminScores" type="button">Clear Scores</button>
+                      <button class="button small ghost" id="exportParticipants" type="button">Export CSV</button>
+                    </div>
+                  </div>
+                  <div class="table-wrap compact">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Phone</th>
+                          <th>Score</th>
+                          <th>Correct</th>
+                          <th>Completed</th>
+                        </tr>
+                      </thead>
+                      <tbody id="adminParticipantsBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
