@@ -55,6 +55,29 @@ let activeContestant = null;
 
 const $ = (selector) => document.querySelector(selector);
 
+async function getParticipantsFromDB() {
+  const { data, error } = await supabaseClient
+    .from("participants")
+    .select("*");
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data;
+}
+
+async function saveParticipantToDB(participant) {
+  const { error } = await supabaseClient
+    .from("participants")
+    .insert([participant]);
+
+  if (error) {
+    console.error(error);
+  }
+}
+
 function getQuestions() {
   const saved = localStorage.getItem(QUESTION_KEY);
   if (!saved) {
@@ -295,7 +318,7 @@ $("#startForm").addEventListener("submit", (event) => {
   $("#quizForm").classList.remove("is-hidden");
 });
 
-$("#quizForm").addEventListener("submit", (event) => {
+$("#quizForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const questions = getQuestions();
   const formData = new FormData(event.currentTarget);
@@ -318,7 +341,9 @@ $("#quizForm").addEventListener("submit", (event) => {
     completedAt: new Date().toISOString(),
   };
 
-  saveParticipants([...getParticipants(), participant]);
+  await saveParticipantToDB(participant);
+  const data = await getParticipantsFromDB();
+  console.log(data);
   $("#quizForm").classList.add("is-hidden");
   $("#resultPanel").classList.remove("is-hidden");
   $("#resultTitle").textContent = `${participant.name}, your score is saved`;
