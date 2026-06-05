@@ -365,36 +365,44 @@ $("#startForm").addEventListener("submit", async (event) => {
 
 $("#quizForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const questions = await getQuestions();
-  const formData = new FormData(event.currentTarget);
-  let correct = 0;
+  console.log("quizForm submit event");
 
-  questions.forEach((question) => {
-    const value = formData.get(`answer-${question.id}`);
-    if (normalizeAnswer(value) === normalizeAnswer(question.answer)) {
-      correct += 1;
+  try {
+    const questions = await getQuestions();
+    const formData = new FormData(event.currentTarget);
+    let correct = 0;
+
+    for (const question of questions) {
+      const value = formData.get(`answer-${question.id}`);
+      const given = normalizeAnswer(value);
+      const expected = normalizeAnswer(question.answer ?? question.correctAnswer ?? "");
+      if (given === expected) correct += 1;
     }
-  });
 
-  const participant = {
-    id: crypto.randomUUID(),
-    name: activeContestant.name,
-    phone: activeContestant.phone,
-    score: correct,
-    correct,
-    total: questions.length,
-    completed_at: new Date().toISOString(),
-  };
+    const participant = {
+      id: crypto.randomUUID(),
+      name: activeContestant.name,
+      phone: activeContestant.phone,
+      score: correct,
+      correct,
+      total: questions.length,
+      completed_at: new Date().toISOString(),
+    };
 
-  await saveParticipantToDB(participant);
-  const data = await getParticipantsFromDB();
-  console.log(data);
-  $("#quizForm").classList.add("is-hidden");
-  $("#resultPanel").classList.remove("is-hidden");
-  $("#resultTitle").textContent = `${participant.name}, your score is saved`;
-  $("#resultCopy").textContent = "Your result is now visible on the live leaderboard.";
-  $("#resultScore").textContent = `${correct}/${questions.length}`;
-  await renderLeaderboard();
+    await saveParticipantToDB(participant);
+    const data = await getParticipantsFromDB();
+    console.log("Participants after insert:", data);
+
+    $("#quizForm").classList.add("is-hidden");
+    $("#resultPanel").classList.remove("is-hidden");
+    $("#resultTitle").textContent = `${participant.name}, your score is saved`;
+    $("#resultCopy").textContent = "Your result is now visible on the live leaderboard.";
+    $("#resultScore").textContent = `${correct}/${questions.length}`;
+    await renderLeaderboard();
+  } catch (err) {
+    console.error("Error during quiz submit:", err);
+    alert("Failed to submit quiz. Check console for details.");
+  }
 });
 
 $("#cancelQuiz").addEventListener("click", showStartPanel);
