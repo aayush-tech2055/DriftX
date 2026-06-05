@@ -69,12 +69,16 @@ async function getParticipantsFromDB() {
 }
 
 async function saveParticipantToDB(participant) {
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("participants")
-    .insert([participant]);
+    .insert([participant])
+    .select();
+
+  console.log("INSERT DATA:", data);
+  console.log("INSERT ERROR:", error);
 
   if (error) {
-    console.error(error);
+    alert(JSON.stringify(error, null, 2));
   }
 }
 
@@ -338,7 +342,7 @@ $("#quizForm").addEventListener("submit", async (event) => {
     score: correct,
     correct,
     total: questions.length,
-    completedAt: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
   };
 
   await saveParticipantToDB(participant);
