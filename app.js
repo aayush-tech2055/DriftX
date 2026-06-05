@@ -95,8 +95,17 @@ function saveQuestions(questions) {
   localStorage.setItem(QUESTION_KEY, JSON.stringify(questions));
 }
 
-function getParticipants() {
-  return JSON.parse(localStorage.getItem(PARTICIPANT_KEY) || "[]");
+async function getParticipants() {
+  const { data, error } = await supabaseClient
+    .from("participants")
+    .select("*");
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return data || [];
 }
 
 function saveParticipants(participants) {
@@ -126,9 +135,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function renderStats() {
+async function renderStats() {
   $("#questionCount").textContent = getQuestions().length;
-  $("#participantCount").textContent = getParticipants().length;
+  $("#participantCount").textContent = (await getParticipants()).length;
 }
 
 function renderQuizQuestions() {
@@ -178,10 +187,10 @@ function showStartPanel() {
   $("#startForm").reset();
 }
 
-function renderLeaderboard() {
-  const participants = getParticipants().sort((a, b) => {
+async function renderLeaderboard() {
+  const participants = (await getParticipants()).sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    return new Date(a.completedAt) - new Date(b.completedAt);
+    return new Date(a.completed_at) - new Date(b.completed_at);
   });
 
   const body = $("#leaderboardBody");
@@ -196,22 +205,22 @@ function renderLeaderboard() {
             <td>${escapeHtml(participant.name)}</td>
             <td>${escapeHtml(participant.phone)}</td>
             <td>${participant.score}/${participant.total}</td>
-            <td>${formatDate(participant.completedAt)}</td>
+            <td>${formatDate(participant.completed_at)}</td>
           </tr>
         `
       )
       .join("");
   }
 
-  renderAdminParticipants();
-  renderStats();
+  await renderAdminParticipants();
+  await renderStats();
 }
 
-function renderAdminParticipants() {
+async function renderAdminParticipants() {
   const body = $("#adminParticipantsBody");
   if (!body) return;
 
-  const participants = getParticipants().sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+  const participants = (await getParticipants()).sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
   if (!participants.length) {
     body.innerHTML = `<tr><td class="empty-row" colspan="5">No participant data yet.</td></tr>`;
     return;
@@ -225,7 +234,7 @@ function renderAdminParticipants() {
           <td>${escapeHtml(participant.phone)}</td>
           <td>${participant.score}/${participant.total}</td>
           <td>${participant.correct}</td>
-          <td>${formatDate(participant.completedAt)}</td>
+          <td>${formatDate(participant.completed_at)}</td>
         </tr>
       `
     )
@@ -262,13 +271,13 @@ function renderAdminQuestions() {
     .join("");
 }
 
-function setAdminState(isLoggedIn) {
+async function setAdminState(isLoggedIn) {
   localStorage.setItem(ADMIN_SESSION_KEY, isLoggedIn ? "true" : "false");
   $("#adminLogin").classList.toggle("is-hidden", isLoggedIn);
   $("#adminDashboard").classList.toggle("is-hidden", !isLoggedIn);
   if (isLoggedIn) {
     renderAdminQuestions();
-    renderAdminParticipants();
+    await renderAdminParticipants();
   }
 }
 
@@ -279,8 +288,8 @@ function resetQuestionForm() {
   $("#optionsField").classList.remove("is-hidden");
 }
 
-function exportParticipantsCsv() {
-  const participants = getParticipants();
+async function exportParticipantsCsv() {
+  const participants = await getParticipants();
   const headers = ["Name", "Phone", "Score", "Total", "Correct", "Completed"];
   const rows = participants.map((participant) => [
     participant.name,
@@ -288,7 +297,7 @@ function exportParticipantsCsv() {
     participant.score,
     participant.total,
     participant.correct,
-    participant.completedAt,
+    participant.completed_at,
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
@@ -353,16 +362,27 @@ $("#quizForm").addEventListener("submit", async (event) => {
   $("#resultTitle").textContent = `${participant.name}, your score is saved`;
   $("#resultCopy").textContent = "Your result is now visible on the live leaderboard.";
   $("#resultScore").textContent = `${correct}/${questions.length}`;
-  renderLeaderboard();
+  await renderLeaderboard();
 });
 
 $("#cancelQuiz").addEventListener("click", showStartPanel);
 $("#newRun").addEventListener("click", showStartPanel);
 
-$("#clearAdminScores").addEventListener("click", () => {
-  if (!confirm("Clear all participant scores from this browser?")) return;
-  saveParticipants([]);
-  renderLeaderboard();
+$("#clearAdminScores").addEventListener("click", async () => {
+  if (!confirm("Delete ALL participant scores?")) return;
+
+  const { error } = await supabaseClient
+    .from("participants")
+    .delete()
+    .neq("id", "");
+
+  if (error) {
+    console.error(error);
+    alert("Failed to clear scores");
+    return;
+  }
+
+  await renderLeaderboard();
 });
 
 $("#adminLogin").addEventListener("submit", (event) => {
@@ -383,7 +403,7 @@ $("#adminQuestionType").addEventListener("change", (event) => {
   $("#optionsField").classList.toggle("is-hidden", event.target.value !== "mcq");
 });
 
-$("#questionForm").addEventListener("submit", (event) => {
+$("#questionForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const id = $("#editingQuestionId").value || crypto.randomUUID();
   const type = $("#adminQuestionType").value;
@@ -421,12 +441,12 @@ $("#questionForm").addEventListener("submit", (event) => {
   saveQuestions(questions);
   resetQuestionForm();
   renderAdminQuestions();
-  renderStats();
+  await renderStats();
 });
 
 $("#resetQuestionForm").addEventListener("click", resetQuestionForm);
 
-$("#adminQuestionList").addEventListener("click", (event) => {
+$("#adminQuestionList").addEventListener("click", async (event) => {
   const editId = event.target.dataset.edit;
   const deleteId = event.target.dataset.delete;
   const questions = getQuestions();
@@ -447,22 +467,24 @@ $("#adminQuestionList").addEventListener("click", (event) => {
     if (!confirm("Delete this question?")) return;
     saveQuestions(questions.filter((item) => item.id !== deleteId));
     renderAdminQuestions();
-    renderStats();
+    await renderStats();
   }
 });
 
-$("#restoreDummyQuestions").addEventListener("click", () => {
+$("#restoreDummyQuestions").addEventListener("click", async () => {
   saveQuestions(dummyQuestions.map((question) => ({ ...question, id: crypto.randomUUID() })));
   resetQuestionForm();
   renderAdminQuestions();
-  renderStats();
+  await renderStats();
 });
 
 $("#exportParticipants").addEventListener("click", exportParticipantsCsv);
 
 getQuestions();
-renderStats();
-renderLeaderboard();
+(async () => {
+  await renderStats();
+  await renderLeaderboard();
+})();
 setAdminState(localStorage.getItem(ADMIN_SESSION_KEY) === "true");
 async function testConnection() {
   const { data, error } = await supabaseClient
