@@ -219,35 +219,6 @@ function showStartPanel() {
   $("#startForm").reset();
 }
 
-async function renderLeaderboard() {
-  const participants = (await getParticipants()).sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return new Date(a.completed_at) - new Date(b.completed_at);
-  });
-
-  const body = $("#leaderboardBody");
-  if (!participants.length) {
-    body.innerHTML = `<tr><td class="empty-row" colspan="5">No completed quiz runs yet.</td></tr>`;
-  } else {
-    body.innerHTML = participants
-      .map(
-        (participant, index) => `
-          <tr>
-            <td>#${index + 1}</td>
-            <td>${escapeHtml(participant.name)}</td>
-            <td>${escapeHtml(participant.phone)}</td>
-            <td>${participant.score}/${participant.total}</td>
-            <td>${formatDate(participant.completed_at)}</td>
-          </tr>
-        `
-      )
-      .join("");
-  }
-
-  await renderAdminParticipants();
-  await renderStats();
-}
-
 async function renderAdminParticipants() {
   const body = $("#adminParticipantsBody");
   if (!body) return;
@@ -398,9 +369,9 @@ $("#quizForm").addEventListener("submit", async (event) => {
     $("#quizForm").classList.add("is-hidden");
     $("#resultPanel").classList.remove("is-hidden");
     $("#resultTitle").textContent = `${participant.name}, your score is saved`;
-    $("#resultCopy").textContent = "Your result is now visible on the live leaderboard.";
+    $("#resultCopy").textContent = "Your score has been saved.";
     $("#resultScore").textContent = `${correct}/${questions.length}`;
-    await renderLeaderboard();
+    await renderStats();
   } catch (err) {
     console.error("Error during quiz submit:", err);
     alert("Failed to submit quiz. Check console for details.");
@@ -424,7 +395,8 @@ $("#clearAdminScores").addEventListener("click", async () => {
     return;
   }
 
-  await renderLeaderboard();
+  await renderAdminParticipants();
+  await renderStats();
 });
 
 $("#adminLogin").addEventListener("submit", async (event) => {
@@ -523,11 +495,7 @@ $("#restoreDummyQuestions").addEventListener("click", async () => {
 $("#exportParticipants").addEventListener("click", exportParticipantsCsv);
 
 (async () => {
-  // initial fetch happens via renderStats/renderLeaderboard
-})();
-(async () => {
   await renderStats();
-  await renderLeaderboard();
 })();
 setAdminState(localStorage.getItem(ADMIN_SESSION_KEY) === "true");
 async function testConnection() {
@@ -552,7 +520,6 @@ supabaseClient
     },
     async () => {
       await renderQuizQuestions();
-      await renderLeaderboard();
     }
   )
   .subscribe();
