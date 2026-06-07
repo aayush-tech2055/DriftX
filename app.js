@@ -52,6 +52,7 @@ const dummyQuestions = [
 ];
 
 let activeContestant = null;
+let activeQuestion = null;
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -177,38 +178,50 @@ async function renderQuizQuestions() {
   const questionList = $("#questionList");
 
   if (!questions.length) {
+    activeQuestion = null;
     questionList.innerHTML = `<p class="empty-row">No questions are active. Please ask admin to add questions.</p>`;
-    return;
+    return false;
   }
 
-  questionList.innerHTML = questions
-    .map((question, index) => {
-      const title = `<h4>${index + 1}. ${escapeHtml(question.question)}</h4>`;
-      if (question.type === "mcq") {
-        const choices = question.options
-          .map(
-            (option) => `
+  const stream = activeContestant?.stream;
+  const filteredQuestions = questions.filter((question) => question.stream === stream);
+
+  if (!filteredQuestions.length) {
+    activeQuestion = null;
+    questionList.innerHTML = `<p class="empty-row">No questions available for your stream. Please contact the administrator.</p>`;
+    return false;
+  }
+
+  const randomIndex = Math.floor(Math.random() * filteredQuestions.length);
+  activeQuestion = filteredQuestions[randomIndex];
+  const title = `<h4>1. ${escapeHtml(activeQuestion.question)}</h4>`;
+
+  if (activeQuestion.type === "mcq") {
+    const choices = activeQuestion.options
+      .map(
+        (option) => `
               <label class="choice">
-                <input type="radio" name="answer-${question.id}" value="${escapeHtml(option)}" required />
+                <input type="radio" name="answer-${activeQuestion.id}" value="${escapeHtml(option)}" required />
                 <span>${escapeHtml(option)}</span>
               </label>
             `
-          )
-          .join("");
-        return `<article class="question-card">${title}<div class="choice-list">${choices}</div></article>`;
-      }
+      )
+      .join("");
 
-      return `
-        <article class="question-card">
-          ${title}
-          <label>
-            Type your answer
-            <input type="text" name="answer-${question.id}" placeholder="Enter answer" required />
-          </label>
-        </article>
-      `;
-    })
-    .join("");
+    questionList.innerHTML = `<article class="question-card">${title}<div class="choice-list">${choices}</div></article>`;
+  } else {
+    questionList.innerHTML = `
+      <article class="question-card">
+        ${title}
+        <label>
+          Type your answer
+          <input type="text" name="answer-${activeQuestion.id}" placeholder="Enter answer" required />
+        </label>
+      </article>
+    `;
+  }
+
+  return true;
 }
 
 function showStartPanel() {
@@ -289,6 +302,7 @@ function resetQuestionForm() {
   $("#questionForm").reset();
   $("#editingQuestionId").value = "";
   $("#adminQuestionType").value = "mcq";
+  $("#questionStream").value = "";
   $("#optionsField").classList.remove("is-hidden");
 }
 
@@ -341,7 +355,7 @@ $("#startForm").addEventListener("submit", async (event) => {
 
   await renderQuizQuestions();
   $("#quizContestant").textContent = activeContestant.name;
-  $("#quizProgress").textContent = `${questions.length} questions loaded`;
+  $("#quizProgress").textContent = `1 question loaded`;
   $("#startForm").classList.add("is-hidden");
   $("#quizForm").classList.remove("is-hidden");
 });
@@ -351,17 +365,14 @@ $("#quizForm").addEventListener("submit", async (event) => {
   console.log("quizForm submit event");
 
   try {
-    const questions = await getQuestions();
-    const formData = new FormData(
-  document.getElementById("quizForm")
-);
+    const formData = new FormData(document.getElementById("quizForm"));
     let correct = 0;
 
-    for (const question of questions) {
-      const value = formData.get(`answer-${question.id}`);
+    if (activeQuestion) {
+      const value = formData.get(`answer-${activeQuestion.id}`);
       const given = normalizeAnswer(value);
-      const expected = normalizeAnswer(question.answer ?? question.correctAnswer ?? "");
-      if (given === expected) correct += 1;
+      const expected = normalizeAnswer(activeQuestion.answer ?? activeQuestion.correctAnswer ?? "");
+      if (given === expected) correct = 1;
     }
 
     const participant = {
@@ -371,7 +382,7 @@ $("#quizForm").addEventListener("submit", async (event) => {
       stream: activeContestant.stream,
       score: correct,
       correct,
-      total: questions.length,
+      total: 1,
       completed_at: new Date().toISOString(),
     };
 
@@ -383,7 +394,7 @@ $("#quizForm").addEventListener("submit", async (event) => {
     $("#resultPanel").classList.remove("is-hidden");
     $("#resultTitle").textContent = `${participant.name}, your score is saved`;
     $("#resultCopy").textContent = "Your score has been saved.";
-    $("#resultScore").textContent = `${correct}/${questions.length}`;
+    $("#resultScore").textContent = `${correct}/1`;
     await renderStats();
   } catch (err) {
     console.error("Error during quiz submit:", err);
@@ -449,12 +460,19 @@ $("#questionForm").addEventListener("submit", async (event) => {
     return;
   }
 
+  const stream = $("#questionStream").value;
+  if (!stream) {
+    alert("Please select a stream for this question.");
+    return;
+  }
+
   const question = {
     id,
     type,
     question: $("#adminQuestion").value.trim(),
     options: type === "mcq" ? options : [],
     answer,
+    stream,
   };
 
   const questions = await getQuestions();
@@ -486,6 +504,7 @@ $("#adminQuestionList").addEventListener("click", async (event) => {
     $("#adminQuestionType").value = question.type;
     $("#adminOptions").value = question.options.join("\n");
     $("#adminAnswer").value = question.answer;
+    $("#questionStream").value = question.stream || "";
     $("#optionsField").classList.toggle("is-hidden", question.type !== "mcq");
     $("#adminQuestion").focus();
   }
