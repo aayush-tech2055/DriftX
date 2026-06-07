@@ -111,6 +111,15 @@
                   Phone number
                   <input id="contestantPhone" type="tel" autocomplete="tel" placeholder="e.g. 9876543210" required />
                 </label>
+                <label>
+                  Stream
+                  <select id="stream" required>
+                    <option value="">Choose Stream</option>
+                    <option value="Science">Science</option>
+                    <option value="Commerce">Commerce</option>
+                    <option value="Arts">Arts</option>
+                  </select>
+                </label>
                 <button class="button primary full" type="submit">Begin Quiz</button>
               </form>
 
@@ -221,6 +230,7 @@
                         <tr>
                           <th>Name</th>
                           <th>Phone</th>
+                          <th>Stream</th>
                           <th>Score</th>
                           <th>Correct</th>
                           <th>Completed</th>

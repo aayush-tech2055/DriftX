@@ -225,7 +225,7 @@ async function renderAdminParticipants() {
 
   const participants = (await getParticipants()).sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
   if (!participants.length) {
-    body.innerHTML = `<tr><td class="empty-row" colspan="5">No participant data yet.</td></tr>`;
+    body.innerHTML = `<tr><td class="empty-row" colspan="6">No participant data yet.</td></tr>`;
     return;
   }
 
@@ -235,6 +235,7 @@ async function renderAdminParticipants() {
         <tr>
           <td>${escapeHtml(participant.name)}</td>
           <td>${escapeHtml(participant.phone)}</td>
+          <td>${escapeHtml(participant.stream || "-")}</td>
           <td>${participant.score}/${participant.total}</td>
           <td>${participant.correct}</td>
           <td>${formatDate(participant.completed_at)}</td>
@@ -293,10 +294,11 @@ function resetQuestionForm() {
 
 async function exportParticipantsCsv() {
   const participants = await getParticipants();
-  const headers = ["Name", "Phone", "Score", "Total", "Correct", "Completed"];
+  const headers = ["Name", "Phone", "Stream", "Score", "Total", "Correct", "Completed"];
   const rows = participants.map((participant) => [
     participant.name,
     participant.phone,
+    participant.stream || "",
     participant.score,
     participant.total,
     participant.correct,
@@ -322,9 +324,19 @@ $("#startForm").addEventListener("submit", async (event) => {
     return;
   }
 
+  const name = $("#contestantName").value.trim();
+  const phone = $("#contestantPhone").value.trim();
+  const stream = $("#stream").value;
+
+  if (!name || !phone || !stream) {
+    alert("Please fill all fields");
+    return;
+  }
+
   activeContestant = {
-    name: $("#contestantName").value.trim(),
-    phone: $("#contestantPhone").value.trim(),
+    name,
+    phone,
+    stream,
   };
 
   await renderQuizQuestions();
@@ -356,6 +368,7 @@ $("#quizForm").addEventListener("submit", async (event) => {
       id: crypto.randomUUID(),
       name: activeContestant.name,
       phone: activeContestant.phone,
+      stream: activeContestant.stream,
       score: correct,
       correct,
       total: questions.length,
